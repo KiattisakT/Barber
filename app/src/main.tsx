@@ -4,6 +4,10 @@ import { BrowserRouter } from 'react-router'
 import App from './App'
 import './styles.css'
 
+if (import.meta.env.DEV) {
+  import('react-grab')
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

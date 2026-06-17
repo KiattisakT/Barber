@@ -1,0 +1,142 @@
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { AdminHeader } from '../features/admin/admin-header'
+import { AdminQueueBoard } from '../features/admin/admin-queue-board'
+import { AdminSidebar } from '../features/admin/admin-sidebar'
+import { AdminSummary } from '../features/admin/admin-summary'
+import { BlockedTimeCard } from '../features/admin/blocked-time-card'
+import { FocusActionCard } from '../features/admin/focus-action-card'
+import { NowNextCards } from '../features/admin/now-next-cards'
+import { QueueDetailPanel } from '../features/admin/queue-detail-panel'
+import { TattooReviewCard } from '../features/admin/tattoo-review-card'
+import { WalkInDialog } from '../features/admin/walk-in-dialog'
+import { barberServices, blockedTimes, queueItems, type BlockedTime, type QueueItem, type QueueStatus } from '../lib/mock-data'
+import {
+  createWalkInQueueItem,
+  getActiveQueueItems,
+  getCheckedInItems,
+  getInProgressItem,
+  getNextCustomer,
+  getPendingTattooItems,
+  getVisibleQueueItems,
+  transitionQueueStatus,
+  type QueueView,
+} from '../lib/queue-system'
+
+type QueueItemsSetter = Dispatch<SetStateAction<QueueItem[]>>
+
+type AdminPageProps = {
+  items: QueueItem[]
+  setItems: QueueItemsSetter
+}
+
+export const AdminPage = ({ items, setItems }: AdminPageProps) => {
+  const [dailyBlocks, setDailyBlocks] = useState<BlockedTime[]>(blockedTimes)
+  const [selectedQueueId, setSelectedQueueId] = useState(queueItems.find((item) => item.status === 'in_progress')?.id ?? queueItems[0]?.id)
+  const [isWalkInOpen, setIsWalkInOpen] = useState(false)
+  const [queueView, setQueueView] = useState<QueueView>('active')
+  const [walkInCustomerName, setWalkInCustomerName] = useState('ลูกค้าหน้าร้าน')
+  const [walkInServiceId, setWalkInServiceId] = useState(barberServices[0]?.id ?? 'classic-haircut')
+  const [walkInNote, setWalkInNote] = useState('เพิ่มจากหน้า admin mock')
+
+  const activeItems = getActiveQueueItems(items)
+  const pendingTattoo = getPendingTattooItems(items)
+  const checkedIn = getCheckedInItems(items)
+  const inProgress = getInProgressItem(items)
+  const nextCustomer = getNextCustomer(items)
+  const selectedItem = items.find((item) => item.id === selectedQueueId) ?? inProgress ?? nextCustomer ?? items[0]
+  const visibleItems = useMemo(() => getVisibleQueueItems(items, queueView), [items, queueView])
+
+  const updateStatus = (id: string, status: QueueStatus) => {
+    setItems((currentItems) => transitionQueueStatus(currentItems, id, status))
+    setSelectedQueueId(id)
+  }
+
+  const addWalkIn = () => {
+    const nextWalkIn = createWalkInQueueItem(items, checkedIn.length)
+    const selectedWalkInService = barberServices.find((service) => service.id === walkInServiceId) ?? barberServices[0]
+
+    setItems((currentItems) => [
+      {
+        ...nextWalkIn,
+        customer: walkInCustomerName.trim() || 'ลูกค้าหน้าร้าน',
+        service: selectedWalkInService.name,
+        duration: selectedWalkInService.duration,
+        note: walkInNote.trim() || 'เพิ่มจากหน้า admin mock',
+      },
+      ...currentItems,
+    ])
+    setSelectedQueueId(nextWalkIn.id)
+    setIsWalkInOpen(false)
+  }
+
+  const addQuickBlockedTime = () => {
+    const nextBlock: BlockedTime = {
+      id: `quick-block-${Date.now()}`,
+      time: '18:30-19:00',
+      reason: 'พัก/เคลียร์อุปกรณ์จากหน้า queue desk',
+      staff: 'Arm',
+    }
+
+    setDailyBlocks((currentBlocks) => [nextBlock, ...currentBlocks])
+  }
+
+  return (
+    <main className="min-h-screen bg-admin-shell text-paper lg:grid lg:grid-cols-[248px_1fr]">
+      <AdminSidebar
+        queueView={queueView}
+        activeItemsCount={activeItems.length}
+        dailyBlocksCount={dailyBlocks.length}
+        onQueueViewChange={setQueueView}
+        onOpenWalkIn={() => setIsWalkInOpen(true)}
+      />
+
+      <section className="px-4 py-5 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <AdminHeader onAddBlock={addQuickBlockedTime} onOpenWalkIn={() => setIsWalkInOpen(true)} />
+          <FocusActionCard inProgress={inProgress} nextCustomer={nextCustomer} onUpdateStatus={updateStatus} onOpenWalkIn={() => setIsWalkInOpen(true)} />
+          <AdminSummary
+            inProgress={inProgress}
+            checkedInCount={checkedIn.length}
+            pendingTattooCount={pendingTattoo.length}
+            activeItemsCount={activeItems.length}
+            totalItemsCount={items.length}
+          />
+
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <section className="space-y-5">
+              <NowNextCards inProgress={inProgress} nextCustomer={nextCustomer} onUpdateStatus={updateStatus} />
+              <AdminQueueBoard
+                visibleItems={visibleItems}
+                selectedItem={selectedItem}
+                inProgress={inProgress}
+                queueView={queueView}
+                onQueueViewChange={setQueueView}
+                onSelectQueue={setSelectedQueueId}
+                onUpdateStatus={updateStatus}
+              />
+            </section>
+
+            <aside className="space-y-5">
+              <QueueDetailPanel selectedItem={selectedItem} inProgress={inProgress} onUpdateStatus={updateStatus} />
+              <TattooReviewCard pendingTattoo={pendingTattoo} onUpdateStatus={updateStatus} />
+              <BlockedTimeCard dailyBlocks={dailyBlocks} onAddBlock={addQuickBlockedTime} />
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <WalkInDialog
+        isOpen={isWalkInOpen}
+        services={barberServices}
+        customerName={walkInCustomerName}
+        serviceId={walkInServiceId}
+        note={walkInNote}
+        onCustomerNameChange={setWalkInCustomerName}
+        onServiceIdChange={setWalkInServiceId}
+        onNoteChange={setWalkInNote}
+        onClose={() => setIsWalkInOpen(false)}
+        onAddWalkIn={addWalkIn}
+      />
+    </main>
+  )
+}
