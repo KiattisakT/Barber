@@ -22,6 +22,8 @@
 - [UI Assets V1](./ui-assets-v1.md)
 - [Queue-First UX Direction](./queue-first-ux-direction.md)
 - [Queue System Implementation Plan](./queue-system-implementation-plan.md)
+- [Backend API Contract V0](./backend-api-contract-v0.md)
+- [Backend Implementation Plan](./backend-implementation-plan.md)
 
 ## Development Documents
 
