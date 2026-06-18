@@ -7,6 +7,7 @@ import { CustomerHome } from '../features/customer/customer-home'
 import { MyQueueView } from '../features/customer/my-queue-view'
 import { TattooRequestView } from '../features/customer/tattoo-request-view'
 import { bookingBaseDate, getBookingDateKey, getBookingDates, rangesOverlap, timeToMinutes } from '../lib/booking-dates'
+import { createCustomerAppointment, createCustomerQueueTicket, createCustomerTattooRequest } from '../lib/customer-booking-api'
 import { barberServices, blockedTimes, timeSlots, type QueueItem } from '../lib/mock-data'
 import {
   getActiveQueueItems,
@@ -32,6 +33,7 @@ export const CustomerBookingPage = ({ items, onAddQueueItem }: CustomerBookingPa
   const [bookingNote, setBookingNote] = useState('')
   const [bookingSubmitted, setBookingSubmitted] = useState(false)
   const [bookingTouched, setBookingTouched] = useState(false)
+  const [bookingConfirmedCode, setBookingConfirmedCode] = useState('')
   const [tattooCustomerName, setTattooCustomerName] = useState('')
   const [tattooCustomerPhone, setTattooCustomerPhone] = useState('')
   const [tattooPlacement, setTattooPlacement] = useState('')
@@ -130,10 +132,21 @@ export const CustomerBookingPage = ({ items, onAddQueueItem }: CustomerBookingPa
     }
   }, [bookingSlots, selectedSlot?.available])
 
-  const takeTicket = () => {
+  const takeTicket = async () => {
     if (hasTicket) {
       setCustomerView('my_queue')
       return
+    }
+
+    try {
+      const nextCustomerTicket = await createCustomerQueueTicket({ service: selectedService })
+      setCustomerTicket(nextCustomerTicket)
+      onAddQueueItem(nextCustomerTicket)
+      setHasTicket(true)
+      setCustomerView('my_queue')
+      return
+    } catch {
+      // Keep the prototype usable when backend is offline.
     }
 
     const queueAheadCount = activeBarberQueue.length
@@ -192,18 +205,51 @@ export const CustomerBookingPage = ({ items, onAddQueueItem }: CustomerBookingPa
     setBookingSubmitted(false)
   }
 
-  const confirmBooking = () => {
+  const confirmBooking = async () => {
     setBookingTouched(true)
 
     if (!canConfirmBooking) return
 
+    try {
+      const response = await createCustomerAppointment({
+        service: selectedService,
+        dateValue: selectedBookingDate,
+        slot: selectedBookingSlot,
+        customerName: bookingCustomerName,
+        phone: bookingCustomerPhone,
+        customerNote: bookingNote,
+      })
+      setBookingConfirmedCode(response.queueItem.bookingCode)
+    } catch {
+      setBookingConfirmedCode(bookingCode)
+    }
+
     setBookingSubmitted(true)
   }
 
-  const submitTattooRequest = () => {
+  const submitTattooRequest = async () => {
     setTattooTouched(true)
 
     if (!canSubmitTattooRequest) return
+
+    try {
+      const result = await createCustomerTattooRequest({
+        customerName: tattooCustomerName,
+        phone: tattooCustomerPhone,
+        placement: tattooPlacement,
+        sizeEstimate: tattooSize,
+        budgetEstimate: tattooBudget,
+        preferredDateText: tattooPreferredDate,
+        description: tattooIdea,
+        referenceImageNames: tattooReferenceName.trim() ? [tattooReferenceName.trim()] : undefined,
+      })
+      onAddQueueItem(result.queueItem)
+      setTattooRequestCode(result.queueItem.bookingCode)
+      setTattooSubmitted(true)
+      return
+    } catch {
+      // Keep the prototype usable when backend is offline.
+    }
 
     const tattooQueueNumber = getNextQueueNumber(items, 'T')
     const nextTattooRequest: QueueItem = {
@@ -304,7 +350,7 @@ export const CustomerBookingPage = ({ items, onAddQueueItem }: CustomerBookingPa
               bookingTouched={bookingTouched}
               phoneDigits={phoneDigits}
               bookingSubmitted={bookingSubmitted}
-              bookingCode={bookingCode}
+              bookingCode={bookingConfirmedCode || bookingCode}
               canConfirmBooking={canConfirmBooking}
               bookingValidationMessages={bookingValidationMessages}
               onSelectService={(serviceId) => {

@@ -1,4 +1,4 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { AdminHeader } from '../features/admin/admin-header'
 import { AdminQueueBoard } from '../features/admin/admin-queue-board'
 import { AdminSidebar } from '../features/admin/admin-sidebar'
@@ -9,6 +9,7 @@ import { NowNextCards } from '../features/admin/now-next-cards'
 import { QueueDetailPanel } from '../features/admin/queue-detail-panel'
 import { TattooReviewCard } from '../features/admin/tattoo-review-card'
 import { WalkInDialog } from '../features/admin/walk-in-dialog'
+import { createAdminBlockedTime, createAdminWalkIn, fetchAdminQueueToday, updateAdminQueueItemStatus } from '../lib/admin-queue-api'
 import { barberServices, blockedTimes, queueItems, type BlockedTime, type QueueItem, type QueueStatus } from '../lib/mock-data'
 import {
   createWalkInQueueItem,
@@ -37,6 +38,8 @@ export const AdminPage = ({ items, setItems }: AdminPageProps) => {
   const [walkInCustomerName, setWalkInCustomerName] = useState('ลูกค้าหน้าร้าน')
   const [walkInServiceId, setWalkInServiceId] = useState(barberServices[0]?.id ?? 'classic-haircut')
   const [walkInNote, setWalkInNote] = useState('เพิ่มจากหน้า admin mock')
+  const [apiStatus, setApiStatus] = useState<'loading' | 'connected' | 'offline'>('loading')
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const activeItems = getActiveQueueItems(items)
   const pendingTattoo = getPendingTattooItems(items)
@@ -46,12 +49,61 @@ export const AdminPage = ({ items, setItems }: AdminPageProps) => {
   const selectedItem = items.find((item) => item.id === selectedQueueId) ?? inProgress ?? nextCustomer ?? items[0]
   const visibleItems = useMemo(() => getVisibleQueueItems(items, queueView), [items, queueView])
 
-  const updateStatus = (id: string, status: QueueStatus) => {
+  const loadAdminQueue = async () => {
+    setApiStatus('loading')
+
+    try {
+      const result = await fetchAdminQueueToday()
+      setItems(result.items)
+      setDailyBlocks(result.blockedTimes)
+      setSelectedQueueId((currentSelectedQueueId) => currentSelectedQueueId ?? result.items.find((item) => item.status === 'in_progress')?.id ?? result.items[0]?.id)
+      setApiStatus('connected')
+      setApiError(null)
+    } catch (error) {
+      setApiStatus('offline')
+      setApiError(error instanceof Error ? error.message : 'โหลด backend queue ไม่สำเร็จ')
+    }
+  }
+
+  useEffect(() => {
+    void loadAdminQueue()
+  }, [])
+
+  const updateStatus = async (id: string, status: QueueStatus) => {
+    if (apiStatus === 'connected') {
+      try {
+        await updateAdminQueueItemStatus(id, status)
+        await loadAdminQueue()
+        setSelectedQueueId(id)
+        return
+      } catch (error) {
+        setApiStatus('offline')
+        setApiError(error instanceof Error ? error.message : 'อัปเดตสถานะผ่าน backend ไม่สำเร็จ')
+      }
+    }
+
     setItems((currentItems) => transitionQueueStatus(currentItems, id, status))
     setSelectedQueueId(id)
   }
 
-  const addWalkIn = () => {
+  const addWalkIn = async () => {
+    if (apiStatus === 'connected') {
+      try {
+        await createAdminWalkIn({
+          serviceId: walkInServiceId,
+          customerName: walkInCustomerName.trim() || 'ลูกค้าหน้าร้าน',
+          phone: '-',
+          internalNote: walkInNote.trim() || 'เพิ่มจากหน้า admin',
+        })
+        await loadAdminQueue()
+        setIsWalkInOpen(false)
+        return
+      } catch (error) {
+        setApiStatus('offline')
+        setApiError(error instanceof Error ? error.message : 'เพิ่ม walk-in ผ่าน backend ไม่สำเร็จ')
+      }
+    }
+
     const nextWalkIn = createWalkInQueueItem(items, checkedIn.length)
     const selectedWalkInService = barberServices.find((service) => service.id === walkInServiceId) ?? barberServices[0]
 
@@ -69,7 +121,22 @@ export const AdminPage = ({ items, setItems }: AdminPageProps) => {
     setIsWalkInOpen(false)
   }
 
-  const addQuickBlockedTime = () => {
+  const addQuickBlockedTime = async () => {
+    if (apiStatus === 'connected') {
+      try {
+        await createAdminBlockedTime({
+          startsAt: '2026-06-17T11:30:00.000Z',
+          endsAt: '2026-06-17T12:00:00.000Z',
+          reason: 'พัก/เคลียร์อุปกรณ์จากหน้า queue desk',
+        })
+        await loadAdminQueue()
+        return
+      } catch (error) {
+        setApiStatus('offline')
+        setApiError(error instanceof Error ? error.message : 'block เวลาผ่าน backend ไม่สำเร็จ')
+      }
+    }
+
     const nextBlock: BlockedTime = {
       id: `quick-block-${Date.now()}`,
       time: '18:30-19:00',
@@ -93,6 +160,10 @@ export const AdminPage = ({ items, setItems }: AdminPageProps) => {
       <section className="px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <AdminHeader onAddBlock={addQuickBlockedTime} onOpenWalkIn={() => setIsWalkInOpen(true)} />
+          <div className="mt-3 text-xs text-stone">
+            Backend: {apiStatus === 'connected' ? 'connected' : apiStatus === 'loading' ? 'loading' : 'offline ใช้ mock/local state'}
+            {apiError ? <span className="ml-2 text-copper">{apiError}</span> : null}
+          </div>
           <FocusActionCard inProgress={inProgress} nextCustomer={nextCustomer} onUpdateStatus={updateStatus} onOpenWalkIn={() => setIsWalkInOpen(true)} />
           <AdminSummary
             inProgress={inProgress}

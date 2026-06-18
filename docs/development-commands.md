@@ -29,6 +29,15 @@ pnpm build
 
 Runs TypeScript (`tsc`) and Vite build. This is the current required validation command after frontend code changes.
 
+## Frontend Tests
+
+```bash
+cd app
+pnpm test
+```
+
+Runs Vitest tests. Current tests cover admin queue API DTO mappers, admin mutation payloads, and customer booking API payload/mapping helpers used by frontend/backend integration.
+
 ## Frontend Preview Build
 
 ```bash
@@ -54,6 +63,8 @@ pnpm dev
 
 Starts the Express server with `tsx watch`. Default port is `4000` unless `PORT` is set.
 
+The frontend Vite dev server proxies `/api` to `http://localhost:4000`, so run backend dev before frontend dev when checking live API integration.
+
 Do not run this as a long-lived process unless the task requires it.
 
 ## Backend Build
@@ -72,7 +83,7 @@ cd server
 pnpm test
 ```
 
-Runs Vitest route tests. Current tests cover health, admin queue read validation, status update route validation, walk-in creation route, and blocked-time creation route with mocked service boundaries.
+Runs Vitest route tests. Current tests cover health, public customer routes, admin queue read validation, status update route validation, walk-in creation route, and blocked-time creation route with mocked service boundaries.
 
 ## Backend Start
 
@@ -137,7 +148,7 @@ Do not claim these checks ran unless the scripts are added and executed.
 
 ## Suggested Validation Cadence
 
-- Frontend code changes: `pnpm build` from `app/`
+- Frontend code changes: `pnpm build` and `pnpm test` from `app/`
 - Backend code changes: `pnpm build` and `pnpm test` from `server/`
 - Docs-only changes: no app/server build required
 - Future routing/data changes: still start with the relevant `pnpm build`; add tests only after test tooling exists

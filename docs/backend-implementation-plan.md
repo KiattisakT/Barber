@@ -248,24 +248,37 @@ Current automated tests:
 
 ## Phase B6: Frontend Integration
 
+Status: started. Admin queue read/status/walk-in/block-time integration and customer ticket/appointment/tattoo request integration are implemented with a frontend API boundary and mock/local fallback where the prototype needs to remain usable.
+
 Add frontend API boundary:
 
 ```txt
 app/src/lib/api-client.ts
-app/src/lib/queue-api.ts
+app/src/lib/admin-queue-api.ts
 ```
 
 Suggested order:
 
-1. read admin queue from API
-2. mutate admin queue status via API
-3. add admin walk-in via API
-4. add blocked time via API
+1. read admin queue from API — implemented
+2. mutate admin queue status via API — implemented
+3. add admin walk-in via API — implemented
+4. add blocked time via API — implemented
 5. customer take ticket via API
 6. tattoo request via API
 7. advance booking via API
 
-Keep mock fallback only if explicitly useful during development.
+Current frontend integration files:
+
+- `app/src/lib/api-client.ts`
+- `app/src/lib/admin-queue-api.ts`
+- `app/src/lib/customer-booking-api.ts`
+- `app/src/lib/admin-queue-api.test.ts`
+- `app/src/lib/customer-booking-api.test.ts`
+- `app/src/pages/admin-page.tsx`
+- `app/src/pages/customer-booking-page.tsx`
+
+Vite dev proxy maps `/api` to `http://localhost:4000` for local integration. Admin page falls back to mock/local state when backend is offline so prototype remains usable.
+Customer page now calls backend for take-ticket, advance booking, and tattoo request; it falls back to existing prototype behavior if backend is offline.
 
 ## Validation Expectations
 
@@ -281,11 +294,12 @@ pnpm prisma:migrate
 pnpm seed
 ```
 
-Frontend validation remains:
+Frontend validation:
 
 ```bash
 cd app
 pnpm build
+pnpm test
 ```
 
 ## Risks

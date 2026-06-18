@@ -1,5 +1,5 @@
 export type ServiceCategory = 'barber' | 'tattoo'
-export type QueueStatus = 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'pending_review' | 'cancelled' | 'no_show'
+export type QueueStatus = 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'pending_review' | 'contacted' | 'cancelled' | 'no_show'
 
 export type Service = {
   id: string
@@ -20,7 +20,7 @@ export type QueueItem = {
   phone: string
   service: string
   staff: string
-  source: 'online' | 'walk_in' | 'tattoo'
+  source: 'online' | 'walk_in' | 'admin' | 'tattoo'
   status: QueueStatus
   duration: string
   estimatedWaitMinutes: number
