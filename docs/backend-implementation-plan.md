@@ -89,7 +89,7 @@ Acceptance:
 
 ## Phase B2: Prisma Schema
 
-Status: schema and seed draft implemented; migration not applied yet.
+Status: schema and seed implemented. Initial migration `20260617061714_init` was generated and applied locally against PostgreSQL.
 
 Created initial Prisma models:
 
@@ -114,12 +114,12 @@ Recommended V0 persistence choice:
 Acceptance:
 
 - Prisma generate works
-- initial migration applies locally — pending live database
-- seed creates Dream Catcher data — script written, pending live database run
+- initial migration applies locally
+- seed creates Dream Catcher data
 
 ## Phase B3: Seed Data
 
-Status: seed script draft implemented; pending live database run after migration.
+Status: seed script implemented and verified locally after migration.
 
 Seed should mirror current prototype enough for frontend replacement:
 
@@ -194,24 +194,57 @@ Responsibilities:
 
 ## Phase B5: Routes
 
+Status: started. Public customer endpoints and admin queue routes/mutations are implemented and verified locally after migration and seed.
+Route tests were added with Vitest + Supertest for health, public customer routes, and admin route boundaries.
+
 Implement from `docs/backend-api-contract-v0.md`:
 
 Public:
 
-- `GET /api/shops/:shopSlug/public`
-- `GET /api/shops/:shopSlug/queue/today`
-- `POST /api/shops/:shopSlug/queue/tickets`
-- `POST /api/shops/:shopSlug/appointments`
-- `POST /api/shops/:shopSlug/tattoo-requests`
+- `GET /api/shops/:shopSlug/public` — implemented
+- `GET /api/shops/:shopSlug/queue/today` — implemented
+- `POST /api/shops/:shopSlug/queue/tickets` — implemented
+- `POST /api/shops/:shopSlug/appointments` — implemented
+- `POST /api/shops/:shopSlug/tattoo-requests` — implemented
 
 Admin:
 
-- `GET /api/admin/shops/:shopSlug/queue/today`
-- `PATCH /api/admin/queue-items/:id/status`
-- `POST /api/admin/walk-ins`
-- `POST /api/admin/blocked-times`
+- `GET /api/admin/shops/:shopSlug/queue/today` — implemented
+- `PATCH /api/admin/queue-items/:id/status` — implemented
+- `POST /api/admin/walk-ins` — implemented
+- `POST /api/admin/blocked-times` — implemented
 
 Keep route handlers thin. They should parse input, call services, and return DTOs.
+
+Current route/service files:
+
+- `server/src/routes/admin-queue-routes.ts`
+- `server/src/routes/public-shop-routes.ts`
+- `server/src/services/admin-queue-service.ts`
+- `server/src/services/admin-mutation-service.ts`
+- `server/src/services/public-shop-service.ts`
+- `server/src/services/queue-number-service.ts`
+- `server/src/services/queue-status-service.ts`
+- `server/src/lib/queue-date.ts`
+- `server/src/errors/http-error.ts`
+
+Verified status transition behavior:
+
+- moving `queue_a023` from `checked_in` to `in_progress` auto-reverted previous `queue_a022` from `in_progress` to `checked_in`
+- attempting to move completed `queue_a018` back to `checked_in` returns `409 INVALID_STATUS_TRANSITION`
+- creating admin walk-in returns `201` and generated queue number `A025`
+- creating a non-overlapping blocked time returns `201`
+- creating a blocked time over active queue `A023` returns `409 BLOCKED_TIME_CONFLICT`
+- public shop endpoint returns active services
+- public queue endpoint supports `bookingCode` / `queueNumber` lookup
+- public customer ticket endpoint creates `walk_in` / `checked_in` queue item with `QT-` booking code
+- public appointment endpoint creates `online` / `confirmed` queue item and rejects active queue overlap with `409 APPOINTMENT_CONFLICT`
+- public tattoo request endpoint creates a `TattooRequest` plus linked `tattoo` / `pending_review` queue item
+
+Current automated tests:
+
+- `server/src/app.test.ts`
+- covers health, public shop/queue/ticket/appointment/tattoo request routes, admin queue read, invalid date validation, status update, invalid status validation, walk-in route, and blocked-time route
 
 ## Phase B6: Frontend Integration
 
