@@ -10,6 +10,7 @@ import { QueueDetailPanel } from '../features/admin/queue-detail-panel'
 import { TattooReviewCard } from '../features/admin/tattoo-review-card'
 import { WalkInDialog } from '../features/admin/walk-in-dialog'
 import { createAdminBlockedTime, createAdminWalkIn, fetchAdminQueueToday, updateAdminQueueItemStatus } from '../lib/admin-queue-api'
+import { appConfig, toBangkokDateTimeIso } from '../lib/app-config'
 import { barberServices, blockedTimes, queueItems, type BlockedTime, type QueueItem, type QueueStatus } from '../lib/mock-data'
 import {
   createWalkInQueueItem,
@@ -122,11 +123,13 @@ export const AdminPage = ({ items, setItems }: AdminPageProps) => {
   }
 
   const addQuickBlockedTime = async () => {
+    const quickBlockStartsAt = toBangkokDateTimeIso(appConfig.queueDate, '18:30')
+    const quickBlockEndsAt = toBangkokDateTimeIso(appConfig.queueDate, '19:00')
     if (apiStatus === 'connected') {
       try {
         await createAdminBlockedTime({
-          startsAt: '2026-06-17T11:30:00.000Z',
-          endsAt: '2026-06-17T12:00:00.000Z',
+          startsAt: quickBlockStartsAt,
+          endsAt: quickBlockEndsAt,
           reason: 'พัก/เคลียร์อุปกรณ์จากหน้า queue desk',
         })
         await loadAdminQueue()
@@ -161,7 +164,7 @@ export const AdminPage = ({ items, setItems }: AdminPageProps) => {
         <div className="mx-auto max-w-7xl">
           <AdminHeader onAddBlock={addQuickBlockedTime} onOpenWalkIn={() => setIsWalkInOpen(true)} />
           <div className="mt-3 text-xs text-stone">
-            Backend: {apiStatus === 'connected' ? 'connected' : apiStatus === 'loading' ? 'loading' : 'offline ใช้ mock/local state'}
+            แหล่งข้อมูล: {apiStatus === 'connected' ? 'backend' : apiStatus === 'loading' ? 'กำลังโหลด' : 'mock/local state'}
             {apiError ? <span className="ml-2 text-copper">{apiError}</span> : null}
           </div>
           <FocusActionCard inProgress={inProgress} nextCustomer={nextCustomer} onUpdateStatus={updateStatus} onOpenWalkIn={() => setIsWalkInOpen(true)} />

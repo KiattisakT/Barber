@@ -1,3 +1,4 @@
+import { appConfig } from './app-config'
 import { apiRequest } from './api-client'
 import type { BlockedTime, QueueItem, QueueStatus } from './mock-data'
 
@@ -118,8 +119,8 @@ export const mapApiBlockedTimeToBlockedTime = (blockedTime: AdminQueueApiBlocked
   }
 }
 
-export const fetchAdminQueueToday = async (shopSlug = 'dream-catcher') => {
-  const queueDate = import.meta.env.VITE_QUEUE_DATE ?? '2026-06-17'
+export const fetchAdminQueueToday = async (shopSlug = appConfig.shopSlug) => {
+  const queueDate = appConfig.queueDate
   const response = await apiRequest<AdminQueueTodayResponse>(`/admin/shops/${shopSlug}/queue/today?date=${queueDate}`)
 
   return {
@@ -139,9 +140,9 @@ export const createAdminWalkIn = async (input: CreateAdminWalkInInput) => {
   return apiRequest('/admin/walk-ins', {
     method: 'POST',
     body: {
-      shopSlug: 'dream-catcher',
+      shopSlug: appConfig.shopSlug,
       serviceId: toApiServiceId(input.serviceId),
-      staffId: 'staff_arm',
+      staffId: appConfig.defaultStaffId,
       customerName: input.customerName,
       phone: input.phone ?? '-',
       internalNote: input.internalNote,
@@ -153,8 +154,8 @@ export const createAdminBlockedTime = async (input: CreateBlockedTimeInput) => {
   return apiRequest('/admin/blocked-times', {
     method: 'POST',
     body: {
-      shopSlug: 'dream-catcher',
-      staffId: input.staffId ?? 'staff_arm',
+      shopSlug: appConfig.shopSlug,
+      staffId: input.staffId ?? appConfig.defaultStaffId,
       startsAt: input.startsAt,
       endsAt: input.endsAt,
       reason: input.reason,

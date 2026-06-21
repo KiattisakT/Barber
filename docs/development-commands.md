@@ -47,6 +47,16 @@ pnpm preview
 
 Serves the built frontend app for local preview. Use only when explicitly needed.
 
+
+## Frontend Environment
+
+Copy `app/.env.example` if local values need to differ. Current frontend variables:
+
+- `VITE_API_BASE_URL` — defaults to `/api`; Vite dev proxies this to backend port `4000`.
+- `VITE_SHOP_SLUG` — defaults to `dream-catcher`.
+- `VITE_DEFAULT_STAFF_ID` — defaults to `staff_arm`.
+- `VITE_QUEUE_DATE` — defaults to `2026-06-17` while the seed data is date-fixed.
+
 ## Backend Install
 
 ```bash
@@ -74,7 +84,7 @@ cd server
 pnpm build
 ```
 
-Runs TypeScript for the server package.
+Generates Prisma Client, then runs TypeScript for the server package. This avoids a fresh checkout failing build before Prisma Client exists.
 
 ## Backend Tests
 
@@ -123,8 +133,8 @@ POST /api/shops/dream-catcher/tattoo-requests -> 201
 ```bash
 cd server
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dream_catcher?schema=public" pnpm prisma:generate
-pnpm prisma:migrate
-pnpm seed
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dream_catcher?schema=public" pnpm prisma:migrate
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dream_catcher?schema=public" pnpm seed
 ```
 
 Current Prisma schema has the initial Dream Catcher models. `prisma:generate`, `prisma:migrate`, and `seed` work with Prisma 6.19.x and a valid local `DATABASE_URL`.

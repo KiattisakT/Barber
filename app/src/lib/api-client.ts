@@ -1,13 +1,11 @@
+import { appConfig } from './app-config'
+
 type ApiRequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown
 }
 
-const getApiBaseUrl = () => {
-  return import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? '/api'
-}
-
 export const apiRequest = async <ResponseBody>(path: string, options: ApiRequestOptions = {}): Promise<ResponseBody> => {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
     ...options,
     headers: {
       'content-type': 'application/json',

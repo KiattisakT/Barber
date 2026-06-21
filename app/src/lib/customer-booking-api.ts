@@ -1,3 +1,4 @@
+import { appConfig, toBangkokDateTimeIso } from './app-config'
 import { apiRequest } from './api-client'
 import type { QueueItem, QueueStatus, Service } from './mock-data'
 
@@ -67,9 +68,7 @@ const serviceIdMap: Record<string, string> = {
 
 const toApiServiceId = (serviceId: string) => serviceIdMap[serviceId] ?? serviceId
 
-export const toBangkokSlotIso = (dateValue: string, slot: string) => {
-  return new Date(`${dateValue}T${slot}:00+07:00`).toISOString()
-}
+export const toBangkokSlotIso = toBangkokDateTimeIso
 
 export const mapTicketResponseToQueueItem = (queueItem: CreateQueueTicketResponse['queueItem'], service: Service): QueueItem => {
   return {
@@ -119,7 +118,7 @@ export const mapTattooResponseToQueueItem = (response: CreateTattooRequestRespon
 }
 
 export const createCustomerQueueTicket = async (input: CreateQueueTicketInput) => {
-  const response = await apiRequest<CreateQueueTicketResponse>('/shops/dream-catcher/queue/tickets', {
+  const response = await apiRequest<CreateQueueTicketResponse>(`/shops/${appConfig.shopSlug}/queue/tickets`, {
     method: 'POST',
     body: {
       serviceId: toApiServiceId(input.service.id),
@@ -133,11 +132,11 @@ export const createCustomerQueueTicket = async (input: CreateQueueTicketInput) =
 }
 
 export const createCustomerAppointment = async (input: CreateAppointmentInput) => {
-  return apiRequest<CreateAppointmentResponse>('/shops/dream-catcher/appointments', {
+  return apiRequest<CreateAppointmentResponse>(`/shops/${appConfig.shopSlug}/appointments`, {
     method: 'POST',
     body: {
       serviceId: toApiServiceId(input.service.id),
-      staffId: input.staffId ?? 'staff_arm',
+      staffId: input.staffId ?? appConfig.defaultStaffId,
       startsAt: toBangkokSlotIso(input.dateValue, input.slot),
       customerName: input.customerName,
       phone: input.phone,
@@ -147,7 +146,7 @@ export const createCustomerAppointment = async (input: CreateAppointmentInput) =
 }
 
 export const createCustomerTattooRequest = async (input: CreateTattooRequestInput) => {
-  const response = await apiRequest<CreateTattooRequestResponse>('/shops/dream-catcher/tattoo-requests', {
+  const response = await apiRequest<CreateTattooRequestResponse>(`/shops/${appConfig.shopSlug}/tattoo-requests`, {
     method: 'POST',
     body: {
       customerName: input.customerName,
